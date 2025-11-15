@@ -4,12 +4,7 @@ import { ProductItem } from '../components/product-item/product-item';
 import { SettingsService } from '../services/settings.service';
 import { SettingsResponse, Store } from '../interfaces/settings.interface';
 import { ProductsService } from '../services/products.service';
-import { Product } from '../interfaces/home-products.interface';
-
-interface ProductWithStore {
-  product: Product;
-  store: Store | null;
-}
+import { StoreData } from '../interfaces/home-products.interface';
 
 @Component({
   selector: 'my-price-home',
@@ -22,7 +17,7 @@ export class Home implements OnInit {
   private settingsService = inject(SettingsService);
   private productsService = inject(ProductsService);
 
-  protected products = signal<ProductWithStore[]>([]);
+  protected storeData = signal<StoreData[]>([]);
   protected categories = signal<string[]>([]);
   protected loading = signal<boolean>(true);
   protected productsLoading = signal<boolean>(true);
@@ -73,18 +68,13 @@ export class Home implements OnInit {
   protected loadProducts(): void {
     this.productsLoading.set(true);
     
-    this.productsService.getAllProducts().subscribe({
-      next: (products: Product[]) => {
-        const storeMap = this.storeMap();
-        const productsWithStore: ProductWithStore[] = products.map(product => ({
-          product,
-          store: storeMap.get(product.source) || null
-        }));
-        
-        this.products.set(productsWithStore);
-        this.productsLoading.set(false);
+    this.productsService.getProductsStream().subscribe({
+      next: (storeData: StoreData) => {
+        // Create Store object from StoreData
+        console.log(storeData);
+        this.storeData.set([...this.storeData(), storeData]);
 
-        console.log(this.products());
+        this.productsLoading.set(false);
       },
       error: (error) => {
         console.error('Error receiving products stream:', error);

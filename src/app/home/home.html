@@ -11,18 +11,33 @@
     </div>
   }
 
-  @if (!productsLoading() && products().length > 0) {
-    <div class="products-grid">
-      @for (item of products(); track item.product.url) {
-        <my-price-product-item
-          [product]="item.product"
-          [store]="item.store"
-        ></my-price-product-item>
+  @if (!productsLoading() && storeData().length > 0) {
+    <div class="stores-container">
+      @for (item of storeData(); track item.store) {
+        <div class="store-section">
+          <div class="store-header">
+            @if (item.imageUrl) {
+              <img [src]="item.imageUrl" [alt]="item.title" class="store-logo" />
+            }
+            <h3 class="store-title">{{ item.title }}</h3>
+          </div>
+
+          @if (item.products && item.products.length > 0) {
+            <div class="store-products-grid">
+              @for (product of item.products; track product.productKey) {
+                <my-price-product-item
+                  [product]="product"
+                  [store]="item"
+                ></my-price-product-item>
+              }
+            </div>
+          }
+        </div>
       }
     </div>
   }
 
-  @if (!productsLoading() && products().length === 0) {
+  @if (!productsLoading() && storeData().length === 0) {
     <div class="home-empty">
       <p>პროდუქტები არ მოიძებნა</p>
     </div>

@@ -1,6 +1,6 @@
 import { inject, Injectable } from "@angular/core";
 import { Observable, Subject } from "rxjs";
-import { StoreEvent, StoreData, Product } from "../interfaces/home-products.interface";
+import { StoreData, Product } from "../interfaces/home-products.interface";
 import { environment } from "../../environments/environment";
 
 @Injectable({
@@ -9,8 +9,8 @@ import { environment } from "../../environments/environment";
 export class ProductsService {
   private abortController?: AbortController;
 
-  getProductsStream(): Observable<StoreEvent> {
-    const subject = new Subject<StoreEvent>();
+  getProductsStream(): Observable<StoreData> {
+    const subject = new Subject<StoreData>();
 
     // Cancel existing request if any
     this.abortController?.abort();
@@ -37,6 +37,8 @@ export class ProductsService {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let currentEvent: string | null = null;
+        let currentData: string | null = null;
 
         if (!reader) {
           throw new Error('Response body is not readable');
@@ -46,6 +48,10 @@ export class ProductsService {
           const { done, value } = await reader.read();
 
           if (done) {
+            // Process any remaining event before completing
+            if (currentEvent && currentData !== null) {
+              this.processEvent(currentEvent, currentData, subject);
+            }
             subject.complete();
             break;
           }
@@ -56,31 +62,21 @@ export class ProductsService {
 
           for (const line of lines) {
             const trimmedLine = line.trim();
-            if (!trimmedLine) continue;
+            if (!trimmedLine) {
+              // Empty line indicates end of event, process it
+              if (currentEvent && currentData !== null) {
+                this.processEvent(currentEvent, currentData, subject);
+                currentEvent = null;
+                currentData = null;
+              }
+              continue;
+            }
 
-            try {
-              let jsonData = trimmedLine;
-
-              // Handle SSE format (data: {...})
-              if (trimmedLine.startsWith('data: ')) {
-                jsonData = trimmedLine.substring(6).trim();
-              }
-              
-              // Try to parse as JSON
-              if (jsonData && (jsonData.startsWith('{') || jsonData.startsWith('['))) {
-                const data: StoreData = JSON.parse(jsonData);
-                const storeEvent: StoreEvent = {
-                  event: 'store',
-                  data: data
-                };
-                subject.next(storeEvent);
-              }
-            } catch (error) {
-              // If it's not valid JSON, it might be a partial chunk - continue
-              // Only log if it looks like it should be JSON
-              if (trimmedLine.startsWith('{') || trimmedLine.startsWith('[')) {
-                console.warn('Failed to parse JSON line:', trimmedLine.substring(0, 100));
-              }
+            // Parse SSE format
+            if (trimmedLine.startsWith('event: ')) {
+              currentEvent = trimmedLine.substring(7).trim();
+            } else if (trimmedLine.startsWith('data: ')) {
+              currentData = trimmedLine.substring(6).trim();
             }
           }
         }
@@ -99,7 +95,21 @@ export class ProductsService {
         this.abortController?.abort();
         this.abortController = undefined;
       };
-    });
+      });
+  }
+
+  private processEvent(eventType: string, dataString: string, subject: Subject<StoreData>): void {
+    try {
+      if (eventType === 'store') {
+        const data: StoreData = JSON.parse(dataString);
+        subject.next(data);
+      } else if (eventType === 'done') {
+        // Stream is complete
+        subject.complete();
+      }
+    } catch (error) {
+      console.error('Error parsing event data:', error, dataString.substring(0, 100));
+    }
   }
 
   getAllProducts(): Observable<Product[]> {
@@ -107,9 +117,9 @@ export class ProductsService {
     
     return new Observable(observer => {
       const streamSubscription = this.getProductsStream().subscribe({
-        next: (storeEvent: StoreEvent) => {
-          if (storeEvent.data?.products) {
-            allProducts.push(...storeEvent.data.products);
+        next: (storeData: StoreData) => {
+          if (storeData?.products) {
+            allProducts.push(...storeData.products);
             // Emit accumulated products so far
             observer.next([...allProducts]);
           }
