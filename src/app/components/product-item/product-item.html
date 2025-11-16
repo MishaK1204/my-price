@@ -1,14 +1,12 @@
 <div class="product-item" (click)="onProductClick()">
   <div class="product-image" [style.background-image]="'url(' + product().imageUrl + ')'">
     <div class="product-overlay">
-      <!-- Top Left: Store Logo/Name -->
       <div class="product-header-left">
         @if (store()) {
           <span class="store-name">{{ store()!.title }}</span>
         }
       </div>
 
-      <!-- Top Right: Product Key and Offer Banner -->
       <div class="product-header-right">
         @if (getDiscountPercent()) {
           <div class="offer-banner">
@@ -26,7 +24,6 @@
         </button>
       </div>
 
-      <!-- Bottom Left: Price -->
       <div class="product-price">
         <span class="original-price">{{ product().price }}₾</span>
         <span class="current-price">{{ product().salePrice }}<span class="currency">₾</span></span>
@@ -34,7 +31,6 @@
     </div>
   </div>
 
-  <!-- Bottom Bar: Store Logo and Validity Date -->
   <div class="product-footer">
     <div class="footer-left">
       @if (store()?.imageUrl) {

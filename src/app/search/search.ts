@@ -57,6 +57,9 @@ export class Search implements OnInit {
   protected products = signal<Product[]>([]);
   protected selectedStores = signal<Set<string>>(new Set<string>());
 
+  // Query params
+  protected categoryId = signal<string | null>(null);
+
   // Pagination
   protected pageSize = signal<number>(24);
   protected currentPage = signal<number>(1);
@@ -73,11 +76,11 @@ export class Search implements OnInit {
     this.loadCategories();
 
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef$)).subscribe((params) => {
-      const qpCategory = params.get('category');
+      this.categoryId.set(params.get('category'));
       const qpQuery = params.get('query');
       const qpStores = params.getAll('store');
 
-      this.selectedKey.set(qpCategory);
+      this.selectedKey.set(this.categoryId());
       this.currentQuery.set(qpQuery);
 
       if (qpStores.length > 0) {
@@ -86,15 +89,15 @@ export class Search implements OnInit {
         this.selectedStores.set(new Set());
       }
 
-      if (!qpQuery && qpCategory) {
-        this.loadProductsForCategory(qpCategory);
+      if (!qpQuery) {
+        this.loadProductsForCategory();
       } else {
         this.productsLoading.set(true);
         this.currentPage.set(1);
         
         this.searchService.searchProducts(qpQuery!, {
           storeTypes: this.getSelectedStoreTypeIds(),
-          categoryId: Number(qpCategory),
+          categoryId: Number(this.categoryId()),
         }).subscribe({
           next: (response: SearchProductsResponse) => {
             this.products.set(response.products);
@@ -176,12 +179,12 @@ export class Search implements OnInit {
     });
   }
 
-  private loadProductsForCategory(categoryId: string): void {
+  private loadProductsForCategory(): void {
     this.productsLoading.set(true);
     this.currentPage.set(1);
 
     this.productsService
-      .getProductsStream(categoryId, { storeTypes: this.getSelectedStoreTypeIds() })
+      .getProductsStream(this.categoryId() || undefined, { storeTypes: this.getSelectedStoreTypeIds() })
       .pipe(takeUntilDestroyed(this.destroyRef$))
       .subscribe({
         next: (storeData: StoreData) => {
