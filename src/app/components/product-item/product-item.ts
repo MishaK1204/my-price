@@ -35,7 +35,7 @@ export class ProductItem {
   getDiscountPercent(): number | null {
     const productValue = this.product();
     if (productValue.salePrice > 0 && productValue.price > productValue.salePrice) {
-      return Math.round((productValue.salePrice / productValue.price) * 100);
+      return Math.round(((productValue.price - productValue.salePrice) / productValue.price) * 100);
     }
     return null;
   }

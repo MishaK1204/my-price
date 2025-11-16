@@ -29,7 +29,7 @@
       <!-- Bottom Left: Price -->
       <div class="product-price">
         <span class="original-price">{{ product().price }}₾</span>
-        <span class="current-price">{{ getDisplayPrice() }}<span class="currency">₾</span></span>
+        <span class="current-price">{{ product().salePrice }}<span class="currency">₾</span></span>
       </div>
     </div>
   </div>
@@ -40,6 +40,8 @@
       @if (store()?.imageUrl) {
         <img [src]="store()!.imageUrl" [alt]="store()!.title" class="footer-logo" />
       }
+
+      <span class="product-name">{{ product().name }}</span>
     </div>
     @if (validityDate()) {
       <div class="footer-right">

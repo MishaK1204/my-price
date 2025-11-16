@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
   selector: 'my-price-header',
@@ -11,11 +11,12 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 })
 export class Header {
   searchQuery: string = '';
+  constructor(private router: Router) {}
 
   onSearch(): void {
     if (this.searchQuery.trim()) {
-      console.log('Searching for:', this.searchQuery);
-      // TODO: Implement search functionality
+      const query = this.searchQuery.trim();
+      this.router.navigate(['/search'], { queryParams: { query } });
     }
   }
 }

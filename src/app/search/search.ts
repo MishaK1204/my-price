@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Carousel } from '../components/carousel/carousel';
 import { CategoryItem, CategoryItemData } from '../components/category-item/category-item';
@@ -6,6 +6,8 @@ import { StoreItem } from '../components/store-item/store-item';
 import { SettingsService } from '../services/settings.service';
 import { SettingsResponse } from '../interfaces/settings.interface';
 import { computed } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'my-price-search',
@@ -16,6 +18,9 @@ import { computed } from '@angular/core';
 })
 export class Search implements OnInit {
   private settingsService = inject(SettingsService);
+  private route = inject(ActivatedRoute);
+  private destroyRef$ = inject(DestroyRef);
+  
   protected categories = signal<CategoryItemData[]>([]);
   protected selectedKey = signal<string | null>(null);
   protected loading = signal<boolean>(true);
@@ -36,6 +41,15 @@ export class Search implements OnInit {
   });
 
   ngOnInit(): void {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef$)).subscribe((params) => {
+      const qpCategory = params.get('category');
+      if (qpCategory) {
+        this.selectedKey.set(qpCategory);
+      } else {
+        this.selectedKey.set(null);
+      }
+    });
+
     this.loadCategories();
   }
 

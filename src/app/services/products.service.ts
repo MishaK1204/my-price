@@ -1,7 +1,6 @@
-import { inject, Injectable } from "@angular/core";
+import { Injectable } from "@angular/core";
 import { Observable, Subject } from "rxjs";
 import { StoreData, Product } from "../interfaces/home-products.interface";
-import { environment } from "../../environments/environment";
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +8,7 @@ import { environment } from "../../environments/environment";
 export class ProductsService {
   private abortController?: AbortController;
 
-  getProductsStream(): Observable<StoreData> {
+  getProductsStream(categoryId?: string): Observable<StoreData> {
     const subject = new Subject<StoreData>();
 
     // Cancel existing request if any
@@ -19,7 +18,10 @@ export class ProductsService {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
-    const streamUrl = 'https://chemifasi.runasp.net/stream';
+    const baseUrl = 'https://chemifasi.runasp.net/stream';
+    const streamUrl = categoryId
+      ? `${baseUrl}?categoryId=${encodeURIComponent(categoryId)}`
+      : baseUrl;
 
     // Use fetch API for better control and CORS handling
     fetch(streamUrl, {
@@ -112,11 +114,11 @@ export class ProductsService {
     }
   }
 
-  getAllProducts(): Observable<Product[]> {
+  getAllProducts(categoryId?: string): Observable<Product[]> {
     const allProducts: Product[] = [];
     
     return new Observable(observer => {
-      const streamSubscription = this.getProductsStream().subscribe({
+      const streamSubscription = this.getProductsStream(categoryId).subscribe({
         next: (storeData: StoreData) => {
           if (storeData?.products) {
             allProducts.push(...storeData.products);
