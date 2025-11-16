@@ -23,6 +23,7 @@ import { SearchProductsResponse } from '../interfaces/search-products.interface'
   styleUrl: './search.scss',
 })
 export class Search implements OnInit {
+  // Services
   private settingsService = inject(SettingsService);
   private productsService = inject(ProductsService);
   private searchService = inject(SearchService);
@@ -31,28 +32,34 @@ export class Search implements OnInit {
   private destroyRef$ = inject(DestroyRef);
   
   protected categories = signal<CategoryItemData[]>([]);
+  protected allStores = signal<Array<{ key: string; title: string; imageUrl?: string }>>([]);
   protected selectedKey = signal<string | null>(null);
   protected loading = signal<boolean>(true);
   protected error = signal<string | null>(null);
-  protected allStores = signal<Array<{ key: string; title: string; imageUrl?: string }>>([]);
   protected categorizedStores = signal<Record<string, Record<string, { title: string; imageUrl?: string }>>>({});
   protected visibleStores = computed(() => {
     const selected = this.selectedKey();
     if (!selected) {
       return this.allStores();
     }
+
     const catMap = this.categorizedStores()[selected] || {};
+
     return Object.entries(catMap).map(([key, store]) => ({
       key,
       title: store.title,
       imageUrl: store.imageUrl,
     }));
   });
+
+  // Products
   protected productsLoading = signal<boolean>(false);
   protected products = signal<Product[]>([]);
+  protected selectedStores = signal<Set<string>>(new Set<string>());
+
+  // Pagination
   protected pageSize = signal<number>(24);
   protected currentPage = signal<number>(1);
-  protected selectedStores = signal<Set<string>>(new Set<string>());
   protected currentQuery = signal<string | null>(null);
   protected pagedProducts = computed(() => {
     const list = this.products();
@@ -68,26 +75,35 @@ export class Search implements OnInit {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef$)).subscribe((params) => {
       const qpCategory = params.get('category');
       const qpQuery = params.get('query');
+      const qpStores = params.getAll('store');
 
       this.selectedKey.set(qpCategory);
       this.currentQuery.set(qpQuery);
 
-      if (qpCategory && !qpQuery) {
+      if (qpStores.length > 0) {
+        this.selectedStores.set(new Set(qpStores));
+      } else {
+        this.selectedStores.set(new Set());
+      }
+
+      if (!qpQuery && qpCategory) {
         this.loadProductsForCategory(qpCategory);
       } else {
-        this.selectedKey.set(null);
-        this.productsLoading.set(false);
-
         this.productsLoading.set(true);
         this.currentPage.set(1);
+        
         this.searchService.searchProducts(qpQuery!, {
           storeTypes: this.getSelectedStoreTypeIds(),
+          categoryId: Number(qpCategory),
         }).subscribe({
           next: (response: SearchProductsResponse) => {
             this.products.set(response.products);
             this.productsLoading.set(false);
           },
           error: (err) => {
+            this.productsLoading.set(false);
+          },
+          complete: () => {
             this.productsLoading.set(false);
           },
         });
@@ -98,6 +114,7 @@ export class Search implements OnInit {
   private loadCategories(): void {
     this.loading.set(true);
     this.error.set(null);
+
     this.settingsService.getSettings().subscribe({
       next: (settings: SettingsResponse) => {
         const stores: Array<{ key: string; title: string; imageUrl?: string }> = [];
@@ -151,10 +168,10 @@ export class Search implements OnInit {
 
   protected onSelectCategory(key: string): void {
     this.selectedKey.set(key);
+    
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { category: key },
-      queryParamsHandling: 'merge',
       replaceUrl: true,
     });
   }
@@ -164,11 +181,12 @@ export class Search implements OnInit {
     this.currentPage.set(1);
 
     this.productsService
-      .getProductsStream(categoryId)
+      .getProductsStream(categoryId, { storeTypes: this.getSelectedStoreTypeIds() })
       .pipe(takeUntilDestroyed(this.destroyRef$))
       .subscribe({
         next: (storeData: StoreData) => {
-          this.products.set([...this.products(), ...storeData.products]);
+          this.products.set([...storeData.products]);
+          console.log(this.products());
         },
         error: () => {
           this.productsLoading.set(false);
@@ -188,30 +206,21 @@ export class Search implements OnInit {
   }
 
   protected onToggleStore(key: string): void {
-    const set = new Set(this.selectedStores());
-    if (set.has(key)) {
-      set.delete(key);
+    if (this.selectedStores().has(key)) {
+      this.selectedStores().delete(key);
     } else {
-      set.add(key);
+      this.selectedStores().add(key);
     }
-    this.selectedStores.set(set);
-    this.currentPage.set(1);
 
-    const query = this.currentQuery();
-    if (query) {
-      this.productsLoading.set(true);
-      this.searchService.searchProducts(query, {
-        storeTypes: this.getSelectedStoreTypeIds(),
-      }).subscribe({
-        next: (response: SearchProductsResponse) => {
-          this.products.set(response.products);
-          this.productsLoading.set(false);
-        },
-        error: () => {
-          this.productsLoading.set(false);
-        },
-      });
-    }
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        query: this.currentQuery(),
+        store: this.getSelectedStoreTypeIds(),
+        category: this.selectedKey(),
+      },
+      queryParamsHandling: 'merge',
+    });
   }
 
   private getSelectedStoreTypeIds(): number[] | undefined {

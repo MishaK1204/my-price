@@ -13,19 +13,27 @@ export class SearchService {
   searchProducts(
     query: string,
     options?: {
+      categoryId?: number
       minPrice?: number;
       maxPrice?: number;
       storeTypes?: number[];
       sort?: 1 | 2 | 3 | 4;
     }
   ): Observable<SearchProductsResponse> {
-    let params = new HttpParams().set('query', query);
+    let params = new HttpParams();
+
+    if (query) {
+      params = params.set('query', query);
+    }
 
     if (options?.minPrice != null) {
       params = params.set('minPrice', String(options.minPrice));
     }
     if (options?.maxPrice != null) {
       params = params.set('maxPrice', String(options.maxPrice));
+    }
+    if (options?.categoryId != null) {
+      params = params.set('categoryId', String(options.categoryId));
     }
     if (options?.storeTypes?.length) {
       options.storeTypes.forEach((storeType) => {

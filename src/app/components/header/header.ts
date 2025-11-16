@@ -16,7 +16,7 @@ export class Header {
   onSearch(): void {
     if (this.searchQuery.trim()) {
       const query = this.searchQuery.trim();
-      this.router.navigate(['/search'], { queryParams: { query } });
+      this.router.navigate(['/search'], { queryParams: { query }, queryParamsHandling: 'merge' });
     }
   }
 }

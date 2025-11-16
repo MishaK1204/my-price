@@ -18,6 +18,13 @@
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
 }
 
+.store-item.selected {
+  background: #111111;
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2) inset;
+}
+
 .thumb {
   width: 36px;
   height: 36px;
@@ -49,9 +56,17 @@
   color: #111827;
 }
 
+.store-item.selected .title {
+  color: #ffffff;
+}
+
 .meta {
   font-size: 0.85rem;
   opacity: 0.85;
+}
+
+.store-item.selected .meta {
+  opacity: 0.9;
 }
 
 @media (max-width: 480px) {

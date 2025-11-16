@@ -8,7 +8,15 @@ import { StoreData, Product } from "../interfaces/home-products.interface";
 export class ProductsService {
   private abortController?: AbortController;
 
-  getProductsStream(categoryId?: string): Observable<StoreData> {
+  getProductsStream(
+    categoryId?: string,
+    options?: {
+      storeTypes?: number[];
+      minPrice?: number;
+      maxPrice?: number;
+      sort?: 1 | 2 | 3 | 4;
+    }
+  ): Observable<StoreData> {
     const subject = new Subject<StoreData>();
 
     // Cancel existing request if any
@@ -19,9 +27,32 @@ export class ProductsService {
     const signal = this.abortController.signal;
 
     const baseUrl = 'https://chemifasi.runasp.net/stream';
-    const streamUrl = categoryId
-      ? `${baseUrl}?categoryId=${encodeURIComponent(categoryId)}`
-      : baseUrl;
+    const params = new URLSearchParams();
+
+    if (categoryId) {
+      params.set('categoryId', categoryId);
+    }
+
+    if (options?.storeTypes?.length) {
+      options.storeTypes.forEach((storeType) => {
+        params.append('storeTypes', String(storeType));
+      });
+    }
+
+    if (options?.minPrice != null) {
+      params.set('minPrice', String(options.minPrice));
+    }
+
+    if (options?.maxPrice != null) {
+      params.set('maxPrice', String(options.maxPrice));
+    }
+
+    if (options?.sort != null) {
+      params.set('sort', String(options.sort));
+    }
+
+    const queryString = params.toString();
+    const streamUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
     // Use fetch API for better control and CORS handling
     fetch(streamUrl, {
@@ -41,6 +72,7 @@ export class ProductsService {
         let buffer = '';
         let currentEvent: string | null = null;
         let currentData: string | null = null;
+        let hasEmittedData = false;
 
         if (!reader) {
           throw new Error('Response body is not readable');
@@ -52,7 +84,22 @@ export class ProductsService {
           if (done) {
             // Process any remaining event before completing
             if (currentEvent && currentData !== null) {
-              this.processEvent(currentEvent, currentData, subject);
+              const emitted = this.processEvent(currentEvent, currentData, subject);
+              if (emitted) {
+                hasEmittedData = true;
+              }
+            }
+            // If no data was emitted, emit an empty result
+            if (!hasEmittedData) {
+              const emptyStoreData: StoreData = {
+                store: 0,
+                products: [],
+                title: '',
+                color: '',
+                imageUrl: '',
+                link: ''
+              };
+              subject.next(emptyStoreData);
             }
             subject.complete();
             break;
@@ -67,7 +114,10 @@ export class ProductsService {
             if (!trimmedLine) {
               // Empty line indicates end of event, process it
               if (currentEvent && currentData !== null) {
-                this.processEvent(currentEvent, currentData, subject);
+                const emitted = this.processEvent(currentEvent, currentData, subject);
+                if (emitted) {
+                  hasEmittedData = true;
+                }
                 currentEvent = null;
                 currentData = null;
               }
@@ -100,44 +150,19 @@ export class ProductsService {
       });
   }
 
-  private processEvent(eventType: string, dataString: string, subject: Subject<StoreData>): void {
+  private processEvent(eventType: string, dataString: string, subject: Subject<StoreData>): boolean {
     try {
       if (eventType === 'store') {
         const data: StoreData = JSON.parse(dataString);
         subject.next(data);
+        return true; // Data was emitted
       } else if (eventType === 'done') {
-        // Stream is complete
-        subject.complete();
+        return false;
       }
     } catch (error) {
       console.error('Error parsing event data:', error, dataString.substring(0, 100));
     }
-  }
-
-  getAllProducts(categoryId?: string): Observable<Product[]> {
-    const allProducts: Product[] = [];
-    
-    return new Observable(observer => {
-      const streamSubscription = this.getProductsStream(categoryId).subscribe({
-        next: (storeData: StoreData) => {
-          if (storeData?.products) {
-            allProducts.push(...storeData.products);
-            // Emit accumulated products so far
-            observer.next([...allProducts]);
-          }
-        },
-        error: (error) => {
-          observer.error(error);
-        },
-        complete: () => {
-          observer.complete();
-        }
-      });
-
-      return () => {
-        streamSubscription.unsubscribe();
-      };
-    });
+    return false; // No data emitted
   }
 
   closeStream(): void {

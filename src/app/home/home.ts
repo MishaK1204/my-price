@@ -35,7 +35,6 @@ export class Home implements OnInit {
 
     this.settingsService.getSettings().subscribe({
       next: (settings: SettingsResponse) => {
-        // Build store map from store number to Store object
         const storeMap = new Map<number, Store>();
         if (settings.storeSetting) {
           Object.entries(settings.storeSetting).forEach(([key, store]) => {
@@ -47,7 +46,6 @@ export class Home implements OnInit {
         }
         this.storeMap.set(storeMap);
 
-        // Load category names
         const names = settings?.categories
           ? Object.values(settings.categories)
               .map((category) => category.title)
@@ -57,8 +55,7 @@ export class Home implements OnInit {
         this.categories.set(names);
         this.loading.set(false);
       },
-      error: (err) => {
-        console.error('Error loading settings:', err);
+      error: () => {
         this.error.set('კატეგორიების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა მოგვიანებით.');
         this.loading.set(false);
       },
@@ -70,8 +67,6 @@ export class Home implements OnInit {
     
     this.productsService.getProductsStream().subscribe({
       next: (storeData: StoreData) => {
-        // Create Store object from StoreData
-        console.log(storeData);
         this.storeData.set([...this.storeData(), storeData]);
 
         this.productsLoading.set(false);

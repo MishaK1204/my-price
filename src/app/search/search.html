@@ -16,7 +16,7 @@
   </my-price-carousel>
 
   <my-price-carousel>
-    @for (store of visibleStores(); track store.key) {
+    @for (store of visibleStores(); track store.title) {
       <my-price-store-item
         [data]="store"
         [selected]="isStoreSelected(store.key)"
@@ -31,9 +31,9 @@
     </div>
   }
 
-  @if (!productsLoading() && products().length > 0) {
+  @if (!productsLoading() && products() && products().length > 0) {
     <div class="products-grid">
-      @for (p of pagedProducts(); track p.productKey) {
+      @for (p of pagedProducts(); track p.name) {
         <my-price-product-item
           [product]="p"
         ></my-price-product-item>
