@@ -17,6 +17,7 @@ export interface StoreItemData {
 })
 export class StoreItem {
   data = input.required<StoreItemData>();
+  selected = input<boolean>(false);
 }
 
 

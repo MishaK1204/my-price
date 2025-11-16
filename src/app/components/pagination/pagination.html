@@ -1,0 +1,20 @@
+<nav class="pagination" aria-label="pagination" *ngIf="totalPages() > 1">
+  <button class="page-btn prev" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">
+    ‹
+  </button>
+
+  <button
+    class="page-btn"
+    *ngFor="let p of visiblePages(); trackBy: trackByPage"
+    [class.active]="p === currentPage()"
+    (click)="goToPage(p)"
+  >
+    {{ p }}
+  </button>
+
+  <button class="page-btn next" [disabled]="currentPage() === totalPages()" (click)="goToPage(currentPage() + 1)">
+    ›
+  </button>
+</nav>
+
+

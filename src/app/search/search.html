@@ -6,7 +6,7 @@
 
 @if (!loading() && !error()) {
   <my-price-carousel>
-    @for (cat of categories(); track cat.key) {
+    @for (cat of categories(); track cat.title) {
       <my-price-category-item
         [data]="cat"
         [selected]="selectedKey() === cat.key"
@@ -17,9 +17,35 @@
 
   <my-price-carousel>
     @for (store of visibleStores(); track store.key) {
-      <my-price-store-item [data]="store"></my-price-store-item>
+      <my-price-store-item
+        [data]="store"
+        [selected]="isStoreSelected(store.key)"
+        (click)="onToggleStore(store.key)"
+      ></my-price-store-item>
     }
   </my-price-carousel>
+
+  @if (productsLoading()) {
+    <div class="search-loading">
+      იტვირთება...
+    </div>
+  }
+
+  @if (!productsLoading() && products().length > 0) {
+    <div class="products-grid">
+      @for (p of pagedProducts(); track p.productKey) {
+        <my-price-product-item
+          [product]="p"
+        ></my-price-product-item>
+      }
+    </div>
+    <my-price-pagination
+      [totalItems]="products().length"
+      [pageSize]="pageSize()"
+      [currentPage]="currentPage()"
+      (pageChange)="onPageChange($event)"
+    ></my-price-pagination>
+  }
 }
 
 @if (error()) {

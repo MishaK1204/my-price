@@ -1,4 +1,4 @@
-<button class="store-item" type="button">
+<button class="store-item" type="button" [class.selected]="selected()">
   @if (data().imageUrl) {
     <span class="thumb">
       <img [src]="data().imageUrl!" [alt]="data().title" />
