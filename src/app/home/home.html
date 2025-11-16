@@ -13,18 +13,25 @@
 
   @if (!productsLoading() && storeData().length > 0) {
     <div class="stores-container">
-      @for (item of storeData(); track item.store) {
+      @for (item of storeData(); track item.title) {
         <div class="store-section">
           <div class="store-header">
-            @if (item.imageUrl) {
-              <img [src]="item.imageUrl" [alt]="item.title" class="store-logo" />
+            <div class="store-header-left">
+              @if (item.imageUrl) {
+                <img [src]="item.imageUrl" [alt]="item.title" class="store-logo" />
+              }
+              <h3 class="store-title">{{ item.title }}</h3>
+            </div>
+            @if (item.products && item.products.length > 8) {
+              <button class="see-all-button" (click)="onSeeAll(item.source)">
+                ყველას ნახვა
+              </button>
             }
-            <h3 class="store-title">{{ item.title }}</h3>
           </div>
 
           @if (item.products && item.products.length > 0) {
             <div class="store-products-grid">
-              @for (product of item.products; track product.productKey) {
+              @for (product of item.products.slice(0, 4); track product.url) {
                 <my-price-product-item
                   [product]="product"
                   [store]="item"

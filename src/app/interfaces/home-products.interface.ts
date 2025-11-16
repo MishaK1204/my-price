@@ -22,6 +22,7 @@ export interface StoreData {
   color: string;
   imageUrl: string;
   link: string;
+  source: number;
 }
 
 export interface DoneData {

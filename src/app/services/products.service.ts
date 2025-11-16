@@ -97,7 +97,8 @@ export class ProductsService {
                 title: '',
                 color: '',
                 imageUrl: '',
-                link: ''
+                link: '',
+                source: 0
               };
               subject.next(emptyStoreData);
             }

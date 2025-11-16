@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ProductItem } from '../components/product-item/product-item';
 import { SettingsService } from '../services/settings.service';
 import { SettingsResponse, Store } from '../interfaces/settings.interface';
@@ -16,6 +17,7 @@ import { StoreData } from '../interfaces/home-products.interface';
 export class Home implements OnInit {
   private settingsService = inject(SettingsService);
   private productsService = inject(ProductsService);
+  private router = inject(Router);
 
   protected storeData = signal<StoreData[]>([]);
   protected categories = signal<string[]>([]);
@@ -79,6 +81,12 @@ export class Home implements OnInit {
         console.log('Products stream completed');
         this.productsLoading.set(false);
       }
+    });
+  }
+
+  protected onSeeAll(storeId: number): void {
+    this.router.navigate(['/search'], {
+      queryParams: { store: storeId }
     });
   }
 }
