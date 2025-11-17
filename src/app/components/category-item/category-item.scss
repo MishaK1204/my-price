@@ -57,6 +57,10 @@
   color: #111827;
 }
 
+.category-item.selected .title {
+  color: #ffffff;
+}
+
 .meta {
   font-size: 0.85rem;
   opacity: 0.85;
@@ -65,6 +69,7 @@
 
 .category-item.selected .meta {
   opacity: 0.9;
+  color: #ffffff;
 }
 
 @media (max-width: 480px) {
