@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Carousel } from '../components/carousel/carousel';
 import { CategoryItem, CategoryItemData } from '../components/category-item/category-item';
@@ -71,6 +71,9 @@ export class Search implements OnInit {
     const start = (page - 1) * size;
     return list.slice(start, start + size);
   });
+
+  // Scroll to top
+  protected showScrollToTop = signal<boolean>(false);
 
   ngOnInit(): void {
     this.loadCategories();
@@ -244,5 +247,19 @@ export class Search implements OnInit {
   private getSelectedStoreTypeIds(): number[] | undefined {
     const ids = Array.from(this.selectedStores()).map((k) => Number(k)).filter((n) => !Number.isNaN(n));
     return ids.length ? ids : undefined;
+  }
+
+  @HostListener('window:scroll', [])
+  onWindowScroll(): void {
+    const scrollY = window.scrollY;
+    // Show button when scrolled down more than 300px
+    this.showScrollToTop.set(scrollY > 300);
+  }
+
+  protected scrollToTop(): void {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 }
