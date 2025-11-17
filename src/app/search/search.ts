@@ -170,13 +170,24 @@ export class Search implements OnInit {
   }
 
   protected onSelectCategory(key: string): void {
-    this.selectedKey.set(key);
-    
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { category: key },
-      replaceUrl: true,
-    });
+    this.products.set([]);
+    this.currentPage.set(1);
+
+    if (this.selectedKey() === key) {
+      this.selectedKey.set(null);
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { category: null },
+        replaceUrl: true,
+      });
+    } else {
+      this.selectedKey.set(key);
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { category: key },
+        replaceUrl: true,
+      });
+    }
   }
 
   private loadProductsForCategory(): void {
@@ -188,8 +199,7 @@ export class Search implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef$))
       .subscribe({
         next: (storeData: StoreData) => {
-          console.log(storeData.products);
-          this.products.set([...storeData.products]);
+          this.products.set([...this.products(), ...storeData.products]);
         },
         error: () => {
           this.productsLoading.set(false);
@@ -209,6 +219,9 @@ export class Search implements OnInit {
   }
 
   protected onToggleStore(key: string): void {
+    this.products.set([]);
+    this.currentPage.set(1);
+
     if (this.selectedStores().has(key)) {
       this.selectedStores().delete(key);
     } else {
