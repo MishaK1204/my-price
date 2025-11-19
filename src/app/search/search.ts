@@ -1,5 +1,6 @@
 import { Component, DestroyRef, OnInit, inject, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Carousel } from '../components/carousel/carousel';
 import { CategoryItem, CategoryItemData } from '../components/category-item/category-item';
 import { StoreItem } from '../components/store-item/store-item';
@@ -14,11 +15,13 @@ import { Product, StoreData } from '../interfaces/home-products.interface';
 import { SearchService } from '../services/search.service';
 import { Pagination } from '../components/pagination/pagination';
 import { SearchProductsResponse } from '../interfaces/search-products.interface';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'my-price-search',
   standalone: true,
-  imports: [CommonModule, Carousel, CategoryItem, StoreItem, ProductItem, Pagination],
+  imports: [CommonModule, FormsModule, Carousel, CategoryItem, StoreItem, ProductItem, Pagination],
   templateUrl: './search.html',
   styleUrl: './search.scss',
 })
@@ -75,8 +78,38 @@ export class Search implements OnInit {
   // Scroll to top
   protected showScrollToTop = signal<boolean>(false);
 
+  // Filters
+  protected minPrice = signal<number | null>(null);
+  protected maxPrice = signal<number | null>(null);
+  protected sort = signal<1 | 2 | 3 | 4 | null>(null);
+  
+  // Debounce subjects for price filters
+  private minPriceSubject = new Subject<number | null>();
+  private maxPriceSubject = new Subject<number | null>();
+
   ngOnInit(): void {
     this.loadCategories();
+
+    // Setup debounced price filters
+    this.minPriceSubject
+      .pipe(
+        debounceTime(500),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef$)
+      )
+      .subscribe(() => {
+        this.onFilterChange();
+      });
+
+    this.maxPriceSubject
+      .pipe(
+        debounceTime(500),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef$)
+      )
+      .subscribe(() => {
+        this.onFilterChange();
+      });
 
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef$)).subscribe((params) => {
       this.categoryId.set(params.get('category'));
@@ -95,24 +128,7 @@ export class Search implements OnInit {
       if (!qpQuery) {
         this.loadProductsForCategory();
       } else {
-        this.productsLoading.set(true);
-        this.currentPage.set(1);
-        
-        this.searchService.searchProducts(qpQuery!, {
-          storeTypes: this.getSelectedStoreTypeIds(),
-          categoryId: Number(this.categoryId()),
-        }).subscribe({
-          next: (response: SearchProductsResponse) => {
-            this.products.set(response.products);
-            this.productsLoading.set(false);
-          },
-          error: (err) => {
-            this.productsLoading.set(false);
-          },
-          complete: () => {
-            this.productsLoading.set(false);
-          },
-        });
+        this.loadSearchResults();
       }
     });
   }
@@ -180,6 +196,7 @@ export class Search implements OnInit {
 
     if (this.selectedKey() === key) {
       this.selectedKey.set(null);
+      this.categoryId.set(null);
       this.router.navigate([], {
         relativeTo: this.route,
         queryParams: { category: null },
@@ -187,6 +204,7 @@ export class Search implements OnInit {
       });
     } else {
       this.selectedKey.set(key);
+      this.categoryId.set(key);
       this.router.navigate([], {
         relativeTo: this.route,
         queryParams: { category: key },
@@ -198,9 +216,17 @@ export class Search implements OnInit {
   private loadProductsForCategory(): void {
     this.productsLoading.set(true);
     this.currentPage.set(1);
+    this.products.set([]);
+
+    const filterOptions = {
+      storeTypes: this.getSelectedStoreTypeIds(),
+      minPrice: this.minPrice() || undefined,
+      maxPrice: this.maxPrice() || undefined,
+      sort: this.sort() || undefined,
+    };
 
     this.productsService
-      .getProductsStream(this.categoryId() || undefined, { storeTypes: this.getSelectedStoreTypeIds() })
+      .getProductsStream(this.categoryId() || undefined, filterOptions)
       .pipe(takeUntilDestroyed(this.destroyRef$))
       .subscribe({
         next: (storeData: StoreData) => {
@@ -213,6 +239,37 @@ export class Search implements OnInit {
           this.productsLoading.set(false);
         },
       });
+  }
+
+  private loadSearchResults(): void {
+    this.productsLoading.set(true);
+    this.currentPage.set(1);
+    this.products.set([]);
+
+    const query = this.currentQuery();
+    if (!query) {
+      this.productsLoading.set(false);
+      return;
+    }
+
+    this.searchService.searchProducts(query, {
+      storeTypes: this.getSelectedStoreTypeIds(),
+      categoryId: Number(this.categoryId()) || undefined,
+      minPrice: this.minPrice() || undefined,
+      maxPrice: this.maxPrice() || undefined,
+      sort: this.sort() || undefined,
+    }).subscribe({
+      next: (response: SearchProductsResponse) => {
+        this.products.set(response.products);
+        this.productsLoading.set(false);
+      },
+      error: (err) => {
+        this.productsLoading.set(false);
+      },
+      complete: () => {
+        this.productsLoading.set(false);
+      },
+    });
   }
 
   protected onPageChange(page: number): void {
@@ -233,15 +290,22 @@ export class Search implements OnInit {
       this.selectedStores().add(key);
     }
 
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {
-        query: this.currentQuery(),
-        store: this.getSelectedStoreTypeIds(),
-        category: this.selectedKey(),
-      },
-      queryParamsHandling: 'merge',
-    });
+    this.applyFilters();
+  }
+
+  protected onFilterChange(): void {
+    this.products.set([]);
+    this.currentPage.set(1);
+    this.applyFilters();
+  }
+
+  private applyFilters(): void {
+    const query = this.currentQuery();
+    if (query) {
+      this.loadSearchResults();
+    } else {
+      this.loadProductsForCategory();
+    }
   }
 
   private getSelectedStoreTypeIds(): number[] | undefined {
@@ -261,5 +325,26 @@ export class Search implements OnInit {
       top: 0,
       behavior: 'smooth'
     });
+  }
+
+  protected onMinPriceChange(value: string | null): void {
+    const numValue = value ? Number(value) : null;
+    this.minPrice.set(numValue);
+    this.minPriceSubject.next(numValue);
+  }
+
+  protected onMaxPriceChange(value: string | null): void {
+    const numValue = value ? Number(value) : null;
+    this.maxPrice.set(numValue);
+    this.maxPriceSubject.next(numValue);
+  }
+
+  protected onSortChange(value: string | null): void {
+    if (value && ['1', '2', '3', '4'].includes(value)) {
+      this.sort.set(Number(value) as 1 | 2 | 3 | 4);
+    } else {
+      this.sort.set(null);
+    }
+    this.onFilterChange();
   }
 }

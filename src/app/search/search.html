@@ -25,6 +25,47 @@
     }
   </my-price-carousel>
 
+  <div class="filters-container">
+    <div class="filter-group">
+      <label class="filter-label">მინ. ფასი</label>
+      <input
+        type="number"
+        class="filter-input"
+        placeholder="0"
+        [ngModel]="minPrice()"
+        (ngModelChange)="onMinPriceChange($event)"
+        min="0"
+        step="0.01"
+      />
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">მაქს. ფასი</label>
+      <input
+        type="number"
+        class="filter-input"
+        placeholder="∞"
+        [ngModel]="maxPrice()"
+        (ngModelChange)="onMaxPriceChange($event)"
+        min="0"
+        step="0.01"
+      />
+    </div>
+    <div class="filter-group">
+      <label class="filter-label">სორტირება</label>
+      <select
+        class="filter-select"
+        [ngModel]="sort()"
+        (ngModelChange)="onSortChange($event)"
+      >
+        <option [value]="null">აირჩიეთ</option>
+        <option [value]="1">რელევანტურობა</option>
+        <option [value]="2">ფასი ზრდადობით</option>
+        <option [value]="3">ფასი კლებადობით</option>
+        <option [value]="4">საუკეთესო ფასდაკლება</option>
+      </select>
+    </div>
+  </div>
+
   @if (productsLoading()) {
     <div class="search-loading">
       იტვირთება...
