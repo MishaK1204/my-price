@@ -6,11 +6,14 @@ import { SettingsService } from '../services/settings.service';
 import { SettingsResponse, Store } from '../interfaces/settings.interface';
 import { ProductsService } from '../services/products.service';
 import { StoreData } from '../interfaces/home-products.interface';
+import { Carousel } from '../components/carousel/carousel';
+import { CategoryItem, CategoryItemData } from '../components/category-item/category-item';
+import { StoreItem } from '../components/store-item/store-item';
 
 @Component({
   selector: 'my-price-home',
   standalone: true,
-  imports: [CommonModule, ProductItem],
+  imports: [CommonModule, ProductItem, Carousel, CategoryItem, StoreItem],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
@@ -20,7 +23,8 @@ export class Home implements OnInit {
   private router = inject(Router);
 
   protected storeData = signal<StoreData[]>([]);
-  protected categories = signal<string[]>([]);
+  protected categories = signal<CategoryItemData[]>([]);
+  protected stores = signal<Array<{ key: string; title: string; imageUrl?: string }>>([]);
   protected loading = signal<boolean>(true);
   protected productsLoading = signal<boolean>(true);
   protected error = signal<string | null>(null);
@@ -49,19 +53,51 @@ export class Home implements OnInit {
         }
         this.storeMap.set(storeMap);
 
-        const names = settings?.categories
-          ? Object.values(settings.categories)
-              .map((category) => category.title)
-              .filter((title): title is string => Boolean(title?.trim()))
-          : [];
+        // Load stores for the carousel
+        const storeItems: Array<{ key: string; title: string; imageUrl?: string }> = [];
+        if (settings.storeSetting) {
+          Object.entries(settings.storeSetting).forEach(([key, store]) => {
+            storeItems.push({ key, title: store.title, imageUrl: store.imageUrl });
+          });
+        }
+        this.stores.set(storeItems);
 
-        this.categories.set(names);
+        const items: CategoryItemData[] = [];
+
+        if (settings.categories) {
+          Object.entries(settings.categories).forEach(([key, category]) => {
+            const storeCount =
+              settings.categorizedStores && settings.categorizedStores[key]
+                ? Object.keys(settings.categorizedStores[key]).length
+                : 0;
+            items.push({
+              key,
+              title: category.title,
+              imageUrl: category.imageUrl,
+              storeCount,
+            });
+          });
+        }
+
+        this.categories.set(items);
         this.loading.set(false);
       },
       error: () => {
         this.error.set('კატეგორიების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა მოგვიანებით.');
         this.loading.set(false);
       },
+    });
+  }
+
+  protected onSelectCategory(key: string): void {
+    this.router.navigate(['/search'], {
+      queryParams: { category: key }
+    });
+  }
+
+  protected onSelectStore(key: string): void {
+    this.router.navigate(['/search'], {
+      queryParams: { store: key }
     });
   }
 

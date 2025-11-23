@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject, signal, HostListener } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Carousel } from '../components/carousel/carousel';
@@ -7,7 +7,6 @@ import { StoreItem } from '../components/store-item/store-item';
 import { ProductItem } from '../components/product-item/product-item';
 import { SettingsService } from '../services/settings.service';
 import { SettingsResponse } from '../interfaces/settings.interface';
-import { computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ProductsService } from '../services/products.service';
@@ -39,26 +38,48 @@ export class Search implements OnInit {
   protected selectedKey = signal<string | null>(null);
   protected loading = signal<boolean>(true);
   protected error = signal<string | null>(null);
+  protected selectedCategoryCount = computed(() => {
+    return this.selectedKey() ? 1 : 0;
+  });
   protected categorizedStores = signal<Record<string, Record<string, { title: string; imageUrl?: string }>>>({});
   protected visibleStores = computed(() => {
     const selected = this.selectedKey();
+    const query = this.currentQuery();
+    const counts = this.storeCounts();
+    const hasSearchResults = query && Object.keys(counts).length > 0;
+
+    let stores: Array<{ key: string; title: string; imageUrl?: string; productCount?: number }> = [];
+
     if (!selected) {
-      return this.allStores();
+      stores = this.allStores().map(store => ({ ...store }));
+    } else {
+      const catMap = this.categorizedStores()[selected] || {};
+      stores = Object.entries(catMap).map(([key, store]) => ({
+        key,
+        title: store.title,
+        imageUrl: store.imageUrl,
+      }));
     }
 
-    const catMap = this.categorizedStores()[selected] || {};
+    // When using search endpoint, filter to only show stores that have products
+    // and add product count to each store
+    if (hasSearchResults) {
+      return stores
+        .filter(store => counts[store.key] !== undefined && counts[store.key] > 0)
+        .map(store => ({
+          ...store,
+          productCount: counts[store.key]
+        }));
+    }
 
-    return Object.entries(catMap).map(([key, store]) => ({
-      key,
-      title: store.title,
-      imageUrl: store.imageUrl,
-    }));
+    return stores;
   });
 
   // Products
   protected productsLoading = signal<boolean>(false);
   protected products = signal<Product[]>([]);
   protected selectedStores = signal<Set<string>>(new Set<string>());
+  protected storeCounts = signal<Record<string, number>>({});
 
   // Query params
   protected categoryId = signal<string | null>(null);
@@ -191,6 +212,7 @@ export class Search implements OnInit {
   protected onSelectCategory(key: string): void {
     this.products.set([]);
     this.currentPage.set(1);
+    this.storeCounts.set({});
 
     this.productsService.categoryChanged.set(true);
 
@@ -217,6 +239,7 @@ export class Search implements OnInit {
     this.productsLoading.set(true);
     this.currentPage.set(1);
     this.products.set([]);
+    this.storeCounts.set({}); // Clear store counts when loading category products
 
     const filterOptions = {
       storeTypes: this.getSelectedStoreTypeIds(),
@@ -249,6 +272,7 @@ export class Search implements OnInit {
     const query = this.currentQuery();
     if (!query) {
       this.productsLoading.set(false);
+      this.storeCounts.set({});
       return;
     }
 
@@ -261,10 +285,12 @@ export class Search implements OnInit {
     }).subscribe({
       next: (response: SearchProductsResponse) => {
         this.products.set(response.products);
+        this.storeCounts.set(response.storeCounts || {});
         this.productsLoading.set(false);
       },
       error: (err) => {
         this.productsLoading.set(false);
+        this.storeCounts.set({});
       },
       complete: () => {
         this.productsLoading.set(false);

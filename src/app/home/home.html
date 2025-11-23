@@ -1,3 +1,33 @@
+<!-- Categories Carousel -->
+@if (!loading() && categories().length > 0) {
+  <section class="home-section categories-section">
+    <my-price-carousel>
+      @for (cat of categories(); track cat.key) {
+        <my-price-category-item
+          [data]="cat"
+          [selected]="false"
+          (select)="onSelectCategory($event)"
+        ></my-price-category-item>
+      }
+    </my-price-carousel>
+  </section>
+}
+
+<!-- Stores Carousel -->
+@if (!loading() && stores().length > 0) {
+  <section class="home-section stores-section">
+    <my-price-carousel [autoScroll]="true" [autoScrollInterval]="5000">
+      @for (store of stores(); track store.key) {
+        <my-price-store-item
+          [data]="store"
+          [selected]="false"
+          (click)="onSelectStore(store.key)"
+        ></my-price-store-item>
+      }
+    </my-price-carousel>
+  </section>
+}
+
 <!-- Product List -->
 <section class="home-section">
   <div class="section-header">

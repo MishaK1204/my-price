@@ -5,20 +5,30 @@
 }
 
 @if (!loading() && !error()) {
-  <my-price-carousel>
-    @for (cat of categories(); track cat.title) {
-      <my-price-category-item
-        [data]="cat"
-        [selected]="selectedKey() === cat.key"
-        (select)="onSelectCategory($event)"
-      ></my-price-category-item>
+  <div class="categories-carousel-wrapper">
+    <my-price-carousel>
+      @for (cat of categories(); track cat.title) {
+        <my-price-category-item
+          [data]="cat"
+          [selected]="selectedKey() === cat.key"
+          (select)="onSelectCategory($event)"
+        ></my-price-category-item>
+      }
+    </my-price-carousel>
+    @if (selectedCategoryCount() > 0) {
+      <span class="category-badge">{{ selectedCategoryCount() }}</span>
     }
-  </my-price-carousel>
+  </div>
 
   <my-price-carousel>
-    @for (store of visibleStores(); track store.title) {
+    @for (store of visibleStores(); track store.key) {
       <my-price-store-item
-        [data]="store"
+        [data]="{
+          key: store.key,
+          title: store.title,
+          imageUrl: store.imageUrl,
+          meta: store.productCount ? store.productCount + ' პროდუქტი' : undefined
+        }"
         [selected]="isStoreSelected(store.key)"
         (click)="onToggleStore(store.key)"
       ></my-price-store-item>
